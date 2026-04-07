@@ -7,6 +7,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+let users = {};
 
 // TESTE
 app.get("/", (req, res) => {
@@ -15,6 +16,11 @@ app.get("/", (req, res) => {
 
 // CRIAR PIX (Mercado Pago)
 app.get("/pix", async (req, res) => {
+  const user_id = Date.now();
+
+  users[user_id] = {
+   status: "pending"
+  };
   try {
     const response = await axios.post(
       "https://api.mercadopago.com/v1/payments",
@@ -23,7 +29,7 @@ app.get("/pix", async (req, res) => {
         description: "FutMax Premium",
         payment_method_id: "pix",
         payer: {
-          email: "test@test.com"
+          email: "rodrigoscherner9.com"
         }
       },
       {
@@ -35,7 +41,10 @@ app.get("/pix", async (req, res) => {
       }
     );
 
-    res.json(response.data);
+    res.json({
+  user_id,
+  ...response.data
+});
   } catch (err) {
     res.status(400).json(err.response?.data || err.message);
   }
@@ -45,6 +54,10 @@ app.get("/pix", async (req, res) => {
 app.post("/webhook", async (req, res) => {
   console.log("WEBHOOK RECEBIDO:", req.body);
   res.sendStatus(200);
+});
+
+fetch("https://seu-backend.onrender.com/pix", {
+  method: "POST"
 });
 
 app.listen(3000, () => {
