@@ -29,7 +29,7 @@ app.get("/pix", async (req, res) => {
         description: "FutMax Premium",
         payment_method_id: "pix",
         payer: {
-          email: "rodrigoscherner9.com"
+          email: "test@test.com"
         }
       },
       {
