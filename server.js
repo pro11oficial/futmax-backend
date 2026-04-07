@@ -14,7 +14,7 @@ app.get("/", (req, res) => {
 });
 
 // CRIAR PIX (Mercado Pago)
-app.post("/pix", async (req, res) => {
+app.get("/pix", async (req, res) => {
   try {
     const response = await axios.post(
       "https://api.mercadopago.com/v1/payments",
