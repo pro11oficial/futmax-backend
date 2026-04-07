@@ -28,6 +28,7 @@ app.get("/pix", async (req, res) => {
         transaction_amount: 10,
         description: "FutMax Premium",
         payment_method_id: "pix",
+	external_reference: user_id.toString(),
         payer: {
           email: "test@test.com"
         }
@@ -54,6 +55,12 @@ app.get("/pix", async (req, res) => {
 app.post("/webhook", async (req, res) => {
   console.log("WEBHOOK RECEBIDO:", req.body);
   res.sendStatus(200);
+  const user_id = payment.external_reference;
+  if (payment.status === "approved") {
+    users[user_id].status = "approved";
+
+    console.log("USUÁRIO LIBERADO:", user_id);
+  }
 });
 
 fetch("https://seu-backend.onrender.com/pix", {
