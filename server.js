@@ -5,7 +5,7 @@ require("dotenv").config();
 const admin = require("firebase-admin");
 
 const app = express();
-p.use(express.json());
+app.use(express.json());
 
 const serviceAccount = require("./firebase-key.json");
 
