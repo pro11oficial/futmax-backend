@@ -1,12 +1,13 @@
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
-require("dotenv").config();
 const admin = require("firebase-admin");
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
+// ================= FIREBASE =================
 const serviceAccount = JSON.parse(process.env.FIREBASE_KEY);
 serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
 
@@ -16,101 +17,103 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-app.use(cors());
-app.use(express.json());
-let users = {};
+// ================= CONFIG =================
+const ACCESS_TOKEN = process.env.ACCESS_TOKEN;
 
-// TESTE
+// ================= ROTA TESTE =================
 app.get("/", (req, res) => {
-  res.send("Backend FutMax rodando");
+  res.send("Servidor rodando");
 });
 
-// CRIAR PIX (Mercado Pago)
-app.get("/pix", async (req, res) => {
-  const user_id = Date.now();
-
-  // 👉 AQUI SALVA NO FIREBASE
-  await db.collection("users").doc(user_id.toString()).set({
-    status: "pending",
-    created_at: new Date()
-  });
-
+// ================= CRIAR PIX =================
+app.post("/pix", async (req, res) => {
   try {
-    const response = await axios.post(
+    const { userId, email } = req.body;
+
+    if (!userId || !email) {
+      return res.status(400).json({ error: "userId e email obrigatórios" });
+    }
+
+    const pagamento = await axios.post(
       "https://api.mercadopago.com/v1/payments",
       {
         transaction_amount: 10,
         description: "FutMax Premium",
         payment_method_id: "pix",
-        external_reference: user_id.toString(),
         payer: {
-          email: "test@test.com"
+          email: email
+        },
+        metadata: {
+          userId: userId
         }
       },
       {
         headers: {
-          Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}`,
-          "Content-Type": "application/json",
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
           "X-Idempotency-Key": Date.now().toString()
         }
       }
     );
 
+    const data = pagamento.data;
+
     res.json({
-      user_id,
-      ...response.data
+      qr_code: data.point_of_interaction.transaction_data.qr_code,
+      qr_code_base64:
+        data.point_of_interaction.transaction_data.qr_code_base64,
+      payment_id: data.id
     });
 
   } catch (err) {
-    res.status(500).json(err.response?.data || err.message);
+    console.log(err.response?.data || err.message);
+    res.status(500).json({ error: "Erro ao criar Pix" });
   }
 });
 
-// WEBHOOK
+// ================= WEBHOOK =================
 app.post("/webhook", async (req, res) => {
   try {
-    const paymentId = req.body.data.id;
+    const payment = req.body;
 
-    const response = await axios.get(
-      `https://api.mercadopago.com/v1/payments/${paymentId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}`
+    if (payment.type === "payment") {
+      const paymentId = payment.data.id;
+
+      const result = await axios.get(
+        `https://api.mercadopago.com/v1/payments/${paymentId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${ACCESS_TOKEN}`
+          }
         }
+      );
+
+      const pagamento = result.data;
+
+      if (pagamento.status === "approved") {
+        const userId = pagamento.metadata.userId;
+
+        await db.collection("users").doc(userId).set(
+          {
+            premium: true,
+            plan: "premium",
+            expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000
+          },
+          { merge: true }
+        );
+
+        console.log("✅ Usuário liberado:", userId);
       }
-    );
-
-    const payment = response.data;
-    const user_id = payment.external_reference;
-
-    if (payment.status === "approved") {
-
-      // 👉 AQUI ATUALIZA NO FIREBASE
-      await db.collection("users").doc(user_id).update({
-        status: "approved",
-        approved_at: new Date()
-      });
-
-      console.log("USUÁRIO LIBERADO:", user_id);
     }
 
+    res.sendStatus(200);
   } catch (err) {
-    console.log(err.response?.data || err.message);
+    console.log(err);
+    res.sendStatus(500);
   }
-
-  res.sendStatus(200);
 });
 
-app.get("/status/:user_id", async (req, res) => {
-  const doc = await db.collection("users").doc(req.params.user_id).get();
-
-  if (!doc.exists) {
-    return res.json({ status: "not_found" });
-  }
-
-  res.json(doc.data());
-});
-
-app.listen(3000, () => {
-  console.log("Servidor rodando na porta 3000");
+// ================= INICIAR SERVIDOR =================
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log("Servidor rodando na porta", PORT);
 });
