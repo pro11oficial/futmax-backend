@@ -107,46 +107,27 @@ app.get("/comprar", async (req, res) => {
 
 // ================= WEBHOOK =================
 app.post("/webhook", async (req, res) => {
-  try {
-    const payment = req.body;
+  const paymentId = req.body.data.id;
 
-    if (payment.type === "payment") {
-      const paymentId = payment.data.id;
-
-      const result = await axios.get(
-        `https://api.mercadopago.com/v1/payments/${paymentId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${ACCESS_TOKEN}`
-          }
-        }
-      );
-
-      const pagamento = result.data;
-
-      if (pagamento.status === "approved") {
-        const userId = pagamento.metadata.userId;
-
-        await db.collection("users").doc(userId).set(
-          {
-            premium: true,
-            plan: "premium",
-            expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000
-          },
-          { merge: true }
-        );
-
-        console.log("✅ Usuário liberado:", userId);
+  const payment = await axios.get(
+    `https://api.mercadopago.com/v1/payments/${paymentId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.ACCESS_TOKEN}`
       }
     }
+  );
 
-    res.sendStatus(200);
-  } catch (err) {
-    console.log(err);
-    res.sendStatus(500);
+  if (payment.data.status === "approved") {
+    const userId = payment.data.metadata.userId;
+
+    await db.collection("users").doc(userId).set({
+      premium: true
+    }, { merge: true });
   }
-});
 
+  res.sendStatus(200);
+});
 // ================= INICIAR SERVIDOR =================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
