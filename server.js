@@ -70,6 +70,41 @@ app.post("/pix", async (req, res) => {
   }
 });
 
+app.get("/comprar", async (req, res) => {
+  const userId = req.query.userId || "teste123";
+
+  const pagamento = await axios.post(
+    "https://api.mercadopago.com/v1/payments",
+    {
+      transaction_amount: 10,
+      description: "FutMax Premium",
+      payment_method_id: "pix",
+      payer: {
+        email: "teste@email.com"
+      },
+      metadata: {
+        userId: userId
+      }
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
+        "X-Idempotency-Key": Date.now().toString()
+      }
+    }
+  );
+
+  const data = pagamento.data;
+
+  const qr = data.point_of_interaction.transaction_data.qr_code_base64;
+
+  res.send(`
+    <h1>Pague com Pix</h1>
+    <img src="data:image/png;base64,${qr}" />
+    <p>Após pagar, volte para o app.</p>
+  `);
+});
+
 // ================= WEBHOOK =================
 app.post("/webhook", async (req, res) => {
   try {
