@@ -2,8 +2,18 @@ const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
 require("dotenv").config();
+const admin = require("firebase-admin");
 
 const app = express();
+p.use(express.json());
+
+const serviceAccount = require("./firebase-key.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+const db = admin.firestore();
 
 app.use(cors());
 app.use(express.json());
@@ -18,9 +28,12 @@ app.get("/", (req, res) => {
 app.get("/pix", async (req, res) => {
   const user_id = Date.now();
 
-  users[user_id] = {
-   status: "pending"
-  };
+  // 👉 AQUI SALVA NO FIREBASE
+  await db.collection("users").doc(user_id.toString()).set({
+    status: "pending",
+    created_at: new Date()
+  });
+
   try {
     const response = await axios.post(
       "https://api.mercadopago.com/v1/payments",
@@ -28,7 +41,7 @@ app.get("/pix", async (req, res) => {
         transaction_amount: 10,
         description: "FutMax Premium",
         payment_method_id: "pix",
-	external_reference: user_id.toString(),
+        external_reference: user_id.toString(),
         payer: {
           email: "test@test.com"
         }
@@ -43,28 +56,58 @@ app.get("/pix", async (req, res) => {
     );
 
     res.json({
-  user_id,
-  ...response.data
-});
+      user_id,
+      ...response.data
+    });
+
   } catch (err) {
-    res.status(400).json(err.response?.data || err.message);
+    res.status(500).json(err.response?.data || err.message);
   }
 });
 
 // WEBHOOK
 app.post("/webhook", async (req, res) => {
-  console.log("WEBHOOK RECEBIDO:", req.body);
-  res.sendStatus(200);
-  const user_id = payment.external_reference;
-  if (payment.status === "approved") {
-    users[user_id].status = "approved";
+  try {
+    const paymentId = req.body.data.id;
 
-    console.log("USUÁRIO LIBERADO:", user_id);
+    const response = await axios.get(
+      `https://api.mercadopago.com/v1/payments/${paymentId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}`
+        }
+      }
+    );
+
+    const payment = response.data;
+    const user_id = payment.external_reference;
+
+    if (payment.status === "approved") {
+
+      // 👉 AQUI ATUALIZA NO FIREBASE
+      await db.collection("users").doc(user_id).update({
+        status: "approved",
+        approved_at: new Date()
+      });
+
+      console.log("USUÁRIO LIBERADO:", user_id);
+    }
+
+  } catch (err) {
+    console.log(err.response?.data || err.message);
   }
+
+  res.sendStatus(200);
 });
 
-fetch("https://seu-backend.onrender.com/pix", {
-  method: "POST"
+app.get("/status/:user_id", async (req, res) => {
+  const doc = await db.collection("users").doc(req.params.user_id).get();
+
+  if (!doc.exists) {
+    return res.json({ status: "not_found" });
+  }
+
+  res.json(doc.data());
 });
 
 app.listen(3000, () => {
