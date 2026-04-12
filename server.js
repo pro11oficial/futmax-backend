@@ -27,14 +27,10 @@ app.get("/", (req, res) => {
 
 // ================= CRIAR PIX =================
 app.post("/pix", async (req, res) => {
+  const { userId, email } = req.body;
+
   try {
-    const { userId, email } = req.body;
-
-    if (!userId || !email) {
-      return res.status(400).json({ error: "userId e email obrigatórios" });
-    }
-
-    const pagamento = await axios.post(
+    const payment = await axios.post(
       "https://api.mercadopago.com/v1/payments",
       {
         transaction_amount: 10,
@@ -49,28 +45,25 @@ app.post("/pix", async (req, res) => {
       },
       {
         headers: {
-          Authorization: `Bearer ${ACCESS_TOKEN}`,
+          Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
           "X-Idempotency-Key": Date.now().toString()
         }
       }
     );
 
-    const data = pagamento.data;
+    const data = payment.data;
 
     res.json({
-     res.json({
-  qr_code_base64:
-    data.point_of_interaction.transaction_data.qr_code_base64,
+      qr_code_base64:
+        data.point_of_interaction.transaction_data.qr_code_base64,
+      qr_code:
+        data.point_of_interaction.transaction_data.qr_code,
+      ticket_url:
+        data.point_of_interaction.transaction_data.ticket_url
+    });
 
-  qr_code:
-    data.point_of_interaction.transaction_data.qr_code,
-
-  ticket_url:
-    data.point_of_interaction.transaction_data.ticket_url
-});
-
-  } catch (err) {
-    console.log(err.response?.data || err.message);
+  } catch (error) {
+    console.log("ERRO PIX:", error.response?.data || error.message);
     res.status(500).json({ error: "Erro ao criar Pix" });
   }
 });
