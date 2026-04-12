@@ -41,7 +41,8 @@ app.post("/pix", async (req, res) => {
         },
         metadata: {
           userId: userId
-        }
+        },
+        notification_url: "https://futmax-backend.onrender.com/webhook",
       },
       {
         headers: {
