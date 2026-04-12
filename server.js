@@ -133,7 +133,9 @@ app.post("/webhook", async (req, res) => {
     console.log("METADATA:", data.metadata);
 
     if (data.status === "approved") {
-      const userId = data.metadata?.userId;
+      const userId =
+  data.metadata?.userId ||
+  data.metadata?.user_id;
 
       if (!userId) {
         console.log("❌ userId não encontrado");
