@@ -58,11 +58,16 @@ app.post("/pix", async (req, res) => {
     const data = pagamento.data;
 
     res.json({
-      qr_code: data.point_of_interaction.transaction_data.qr_code,
-      qr_code_base64:
-        data.point_of_interaction.transaction_data.qr_code_base64,
-      payment_id: data.id
-    });
+     res.json({
+  qr_code_base64:
+    data.point_of_interaction.transaction_data.qr_code_base64,
+
+  qr_code:
+    data.point_of_interaction.transaction_data.qr_code,
+
+  ticket_url:
+    data.point_of_interaction.transaction_data.ticket_url
+});
 
   } catch (err) {
     console.log(err.response?.data || err.message);
