@@ -111,7 +111,8 @@ app.post("/webhook", async (req, res) => {
 
     const paymentId =
       req.body?.data?.id ||
-      req.body?.id;
+      req.body?.id ||
+      req.body?.resource;
 
     if (!paymentId) {
       console.log("❌ paymentId não encontrado");
@@ -129,11 +130,13 @@ app.post("/webhook", async (req, res) => {
 
     const data = response.data;
 
+    console.log("METADATA:", data.metadata);
+
     if (data.status === "approved") {
       const userId = data.metadata?.userId;
 
       if (!userId) {
-       console.log("METADATA:", data.metadata);
+        console.log("❌ userId não encontrado");
         return res.sendStatus(200);
       }
 
