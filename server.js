@@ -54,7 +54,7 @@ app.post("/pix", async (req, res) => {
 
     const data = payment.data;
 
-    res.json({
+    return res.json({
       qr_code_base64:
         data.point_of_interaction.transaction_data.qr_code_base64,
       qr_code:
