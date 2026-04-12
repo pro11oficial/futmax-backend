@@ -33,7 +33,7 @@ app.post("/pix", async (req, res) => {
     const payment = await axios.post(
       "https://api.mercadopago.com/v1/payments",
       {
-        transaction_amount: 10,
+        transaction_amount: 1,
         description: "FutMax Premium",
         payment_method_id: "pix",
         payer: {
