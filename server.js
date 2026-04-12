@@ -37,10 +37,10 @@ app.post("/pix", async (req, res) => {
         description: "FutMax Premium",
         payment_method_id: "pix",
         payer: {
-          email: email
+          email: req.body.email
         },
         metadata: {
-          userId: userId
+          userId: req.body.userId
         },
         notification_url: "https://futmax-backend.onrender.com/webhook",
       },
