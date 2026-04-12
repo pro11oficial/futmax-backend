@@ -133,7 +133,7 @@ app.post("/webhook", async (req, res) => {
       const userId = data.metadata?.userId;
 
       if (!userId) {
-        console.log("❌ userId não encontrado");
+       console.log("METADATA:", data.metadata);
         return res.sendStatus(200);
       }
 
