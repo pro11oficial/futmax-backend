@@ -40,7 +40,9 @@ app.post("/pix", async (req, res) => {
           email: req.body.email
         },
         metadata: {
-          userId: req.body.userId
+  user_id: req.body.userId,
+  plan: req.body.plan
+}
         },
         notification_url: "https://futmax-backend.onrender.com/webhook",
       },
@@ -130,6 +132,39 @@ app.post("/webhook", async (req, res) => {
 
       await db.collection("users").doc(userId).set({
         premium: true
+      }, { merge: true });
+    }
+
+    res.sendStatus(200);
+  } catch (err) {
+    console.log(err);
+    res.sendStatus(200);
+  }
+});app.post("/webhook", async (req, res) => {
+  try {
+    const paymentId = req.body?.data?.id;
+    if (!paymentId) return res.sendStatus(200);
+
+    const mpRes = await axios.get(
+      `https://api.mercadopago.com/v1/payments/${paymentId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.ACCESS_TOKEN}`
+        }
+      }
+    );
+
+    const payment = mpRes.data;
+
+    if (payment.status === "approved") {
+      const userId = payment.metadata?.user_id;
+
+      if (!userId) return res.sendStatus(200);
+
+      await db.collection("subscriptions").doc(userId).set({
+        status: "active",
+        updatedAt: new Date(),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
       }, { merge: true });
     }
 
