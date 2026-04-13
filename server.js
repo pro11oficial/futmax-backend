@@ -29,11 +29,7 @@ app.get("/", (req, res) => {
 app.post("/pix", async (req, res) => {
   const { userId, email, plan } = req.body;
 
-  let amount = 10;
-
-  if (plan === "yearly") {
-    amount = 100;
-  }
+  let amount = plan === "yearly" ? 100 : 10;
 
   try {
     const payment = await axios.post(
@@ -42,9 +38,7 @@ app.post("/pix", async (req, res) => {
         transaction_amount: amount,
         description: `FutMax ${plan}`,
         payment_method_id: "pix",
-        payer: {
-          email: email
-        },
+        payer: { email },
         metadata: {
           user_id: userId,
           plan: plan
@@ -70,12 +64,10 @@ app.post("/pix", async (req, res) => {
     res.status(500).send("Erro ao criar PIX");
   }
 });
-
 // ================= WEBHOOK =================
 app.post("/webhook", async (req, res) => {
   try {
     const paymentId = req.body.data?.id;
-
     if (!paymentId) return res.sendStatus(200);
 
     const response = await axios.get(
@@ -93,13 +85,24 @@ app.post("/webhook", async (req, res) => {
       const userId = payment.metadata.user_id;
       const plan = payment.metadata.plan;
 
+      const now = new Date();
+      let expiresAt = new Date();
+
+      if (plan === "monthly") {
+        expiresAt.setMonth(now.getMonth() + 1);
+      }
+
+      if (plan === "yearly") {
+        expiresAt.setFullYear(now.getFullYear() + 1);
+      }
+
       await db.collection("subscriptions").doc(userId).set({
         status: "active",
         plan: plan,
-        updatedAt: new Date()
+        expiresAt: expiresAt
       });
 
-      console.log("✅ Premium liberado:", userId, plan);
+      console.log("✅ Liberado:", userId, plan);
     }
 
     res.sendStatus(200);
