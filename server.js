@@ -27,7 +27,7 @@ app.get("/", (req, res) => {
 
 // ================= CRIAR PIX =================
 app.post("/pix", async (req, res) => {
-  const { userId, email } = req.body;
+  const { userId, email, plan } = req.body;
 
   try {
     const payment = await axios.post(
@@ -37,14 +37,13 @@ app.post("/pix", async (req, res) => {
         description: "FutMax Premium",
         payment_method_id: "pix",
         payer: {
-          email: req.body.email
+          email: email
         },
         metadata: {
-  user_id: req.body.userId,
-  plan: req.body.plan
-}
+          user_id: userId,
+          plan: plan
         },
-        notification_url: "https://futmax-backend.onrender.com/webhook",
+        notification_url: "https://futmax-backend.onrender.com/webhook"
       },
       {
         headers: {
