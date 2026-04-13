@@ -107,19 +107,12 @@ app.get("/comprar", async (req, res) => {
 // ================= WEBHOOK =================
 app.post("/webhook", async (req, res) => {
   try {
-    console.log("WEBHOOK:", req.body);
+    const payment = req.body;
 
-    const paymentId =
-      req.body?.data?.id ||
-      req.body?.id ||
-      req.body?.resource;
+    const paymentId = payment?.data?.id;
+    if (!paymentId) return res.sendStatus(200);
 
-    if (!paymentId) {
-      console.log("❌ paymentId não encontrado");
-      return res.sendStatus(200);
-    }
-
-    const response = await axios.get(
+    const mpRes = await axios.get(
       `https://api.mercadopago.com/v1/payments/${paymentId}`,
       {
         headers: {
@@ -128,32 +121,22 @@ app.post("/webhook", async (req, res) => {
       }
     );
 
-    const data = response.data;
-
-    console.log("METADATA:", data.metadata);
+    const data = mpRes.data;
 
     if (data.status === "approved") {
-      const userId =
-  data.metadata?.userId ||
-  data.metadata?.user_id;
+      const userId = data.metadata?.user_id;
 
-      if (!userId) {
-        console.log("❌ userId não encontrado");
-        return res.sendStatus(200);
-      }
+      if (!userId) return res.sendStatus(200);
 
       await db.collection("users").doc(userId).set({
         premium: true
-      });
-
-      console.log("✅ Premium liberado:", userId);
+      }, { merge: true });
     }
 
     res.sendStatus(200);
-
-  } catch (error) {
-    console.log("ERRO WEBHOOK:", error.message);
-    res.sendStatus(500);
+  } catch (err) {
+    console.log(err);
+    res.sendStatus(200);
   }
 });
 // ================= INICIAR SERVIDOR =================
