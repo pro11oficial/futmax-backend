@@ -29,12 +29,18 @@ app.get("/", (req, res) => {
 app.post("/pix", async (req, res) => {
   const { userId, email, plan } = req.body;
 
+  let amount = 10;
+
+  if (plan === "yearly") {
+    amount = 100;
+  }
+
   try {
     const payment = await axios.post(
       "https://api.mercadopago.com/v1/payments",
       {
-        transaction_amount: 1,
-        description: "FutMax Premium",
+        transaction_amount: amount,
+        description: `FutMax ${plan}`,
         payment_method_id: "pix",
         payer: {
           email: email
@@ -47,73 +53,32 @@ app.post("/pix", async (req, res) => {
       },
       {
         headers: {
-          Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
-          "X-Idempotency-Key": Date.now().toString()
+          Authorization: `Bearer ${process.env.ACCESS_TOKEN}`
         }
       }
     );
 
     const data = payment.data;
 
-    return res.json({
-      qr_code_base64:
-        data.point_of_interaction.transaction_data.qr_code_base64,
-      qr_code:
-        data.point_of_interaction.transaction_data.qr_code,
+    res.json({
       ticket_url:
         data.point_of_interaction.transaction_data.ticket_url
     });
 
-  } catch (error) {
-    console.log("ERRO PIX:", error.response?.data || error.message);
-    res.status(500).json({ error: "Erro ao criar Pix" });
+  } catch (err) {
+    console.log(err.response?.data || err);
+    res.status(500).send("Erro ao criar PIX");
   }
-});
-
-app.get("/comprar", async (req, res) => {
-  const userId = req.query.userId || "teste123";
-
-  const pagamento = await axios.post(
-    "https://api.mercadopago.com/v1/payments",
-    {
-      transaction_amount: 10,
-      description: "FutMax Premium",
-      payment_method_id: "pix",
-      payer: {
-        email: "teste@email.com"
-      },
-      metadata: {
-        userId: userId
-      }
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
-        "X-Idempotency-Key": Date.now().toString()
-      }
-    }
-  );
-
-  const data = pagamento.data;
-
-  const qr = data.point_of_interaction.transaction_data.qr_code_base64;
-
-  res.send(`
-    <h1>Pague com Pix</h1>
-    <img src="data:image/png;base64,${qr}" />
-    <p>Após pagar, volte para o app.</p>
-  `);
 });
 
 // ================= WEBHOOK =================
 app.post("/webhook", async (req, res) => {
   try {
-    const payment = req.body;
+    const paymentId = req.body.data?.id;
 
-    const paymentId = payment?.data?.id;
     if (!paymentId) return res.sendStatus(200);
 
-    const mpRes = await axios.get(
+    const response = await axios.get(
       `https://api.mercadopago.com/v1/payments/${paymentId}`,
       {
         headers: {
@@ -122,55 +87,25 @@ app.post("/webhook", async (req, res) => {
       }
     );
 
-    const data = mpRes.data;
-
-    if (data.status === "approved") {
-      const userId = data.metadata?.user_id;
-
-      if (!userId) return res.sendStatus(200);
-
-      await db.collection("users").doc(userId).set({
-        premium: true
-      }, { merge: true });
-    }
-
-    res.sendStatus(200);
-  } catch (err) {
-    console.log(err);
-    res.sendStatus(200);
-  }
-});app.post("/webhook", async (req, res) => {
-  try {
-    const paymentId = req.body?.data?.id;
-    if (!paymentId) return res.sendStatus(200);
-
-    const mpRes = await axios.get(
-      `https://api.mercadopago.com/v1/payments/${paymentId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.ACCESS_TOKEN}`
-        }
-      }
-    );
-
-    const payment = mpRes.data;
+    const payment = response.data;
 
     if (payment.status === "approved") {
-      const userId = payment.metadata?.user_id;
-
-      if (!userId) return res.sendStatus(200);
+      const userId = payment.metadata.user_id;
+      const plan = payment.metadata.plan;
 
       await db.collection("subscriptions").doc(userId).set({
         status: "active",
-        updatedAt: new Date(),
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-      }, { merge: true });
+        plan: plan,
+        updatedAt: new Date()
+      });
+
+      console.log("✅ Premium liberado:", userId, plan);
     }
 
     res.sendStatus(200);
   } catch (err) {
     console.log(err);
-    res.sendStatus(200);
+    res.sendStatus(500);
   }
 });
 // ================= INICIAR SERVIDOR =================
