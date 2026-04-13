@@ -61,7 +61,7 @@ app.post("/pix", async (req, res) => {
 
   } catch (err) {
     console.log(err.response?.data || err);
-    res.status(500).send("Erro ao criar PIX");
+  res.status(500).json({ error: "Erro ao criar PIX" });
   }
 });
 // ================= WEBHOOK =================
