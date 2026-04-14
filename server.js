@@ -108,12 +108,12 @@ app.post("/webhook", async (req, res) => {
         expiresAt: expiresAt
       });
 
-      console.log("✅ Liberado:", userId, plan);
+      console.log("✅ Premium liberado:", userId);
     }
 
     res.sendStatus(200);
   } catch (err) {
-    console.log(err);
+    console.log("ERRO WEBHOOK:", err);
     res.sendStatus(500);
   }
 });
