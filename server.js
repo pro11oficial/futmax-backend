@@ -29,7 +29,7 @@ app.get("/", (req, res) => {
 app.post("/pix", async (req, res) => {
   const { userId, email, plan } = req.body;
 
-  let amount = plan === "yearly" ? 100 : 10;
+  let amount = plan === "yearly" ? 179,90 : 19,90;
 
   try {
     const payment = await axios.post(
@@ -38,7 +38,9 @@ app.post("/pix", async (req, res) => {
         transaction_amount: amount,
         description: `FutMax ${plan}`,
         payment_method_id: "pix",
-        payer: { email },
+        payer: {
+          email: email
+        },
         metadata: {
           user_id: userId,
           plan: plan
@@ -60,13 +62,14 @@ app.post("/pix", async (req, res) => {
     });
 
   } catch (err) {
-  console.log("ERRO PIX:", err.response?.data || err.message);
+    console.log("ERRO PIX:", err.response?.data || err.message);
 
-  res.status(500).json({
-    error: "Erro ao criar PIX",
-    detalhe: err.response?.data || err.message
-  });
-}
+    res.status(500).json({
+      error: "Erro ao criar PIX",
+      detalhe: err.response?.data || err.message
+    });
+  }
+});
 // ================= WEBHOOK =================
 app.post("/webhook", async (req, res) => {
   try {
