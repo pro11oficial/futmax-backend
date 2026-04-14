@@ -32,27 +32,28 @@ app.post("/pix", async (req, res) => {
   let amount = plan === "yearly" ? 179 : 19;
 
   try {
-    const payment = await axios.post(
-      "https://api.mercadopago.com/v1/payments",
-      {
-        transaction_amount: amount,
-        description: `FutMax ${plan}`,
-        payment_method_id: "pix",
-        payer: {
-          email: email
-        },
-        metadata: {
-          user_id: userId,
-          plan: plan
-        },
-        notification_url: "https://futmax-backend.onrender.com/webhook"
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.ACCESS_TOKEN}`
-        }
-      }
-    );
+   const payment = await axios.post(
+  "https://api.mercadopago.com/v1/payments",
+  {
+    transaction_amount: amount,
+    description: `FutMax ${plan}`,
+    payment_method_id: "pix",
+    payer: {
+      email: email
+    },
+    metadata: {
+      user_id: userId,
+      plan: plan
+    },
+    notification_url: "https://futmax-backend.onrender.com/webhook"
+  },
+  {
+    headers: {
+      Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
+      "X-Idempotency-Key": Date.now().toString()
+    }
+  }
+);
 
     const data = payment.data;
 
