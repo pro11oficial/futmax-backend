@@ -29,7 +29,7 @@ app.get("/", (req, res) => {
 app.post("/pix", async (req, res) => {
   const { userId, email, plan } = req.body;
 
-  let amount = plan === "yearly" ? 179 : 19;
+  let amount = plan === "yearly" ? 179.9 : 19.9;
 
   try {
    const payment = await axios.post(
